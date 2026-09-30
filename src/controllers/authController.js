@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
 const Driver = require("../models/Driver");
-const { admin } = require("../config/firebase");
+const { auth } = require("../config/firebase");
 
 const generateToken = (user) => {
     return jwt.sign(
@@ -31,7 +31,8 @@ const register = async (req, res) => {
             licenseNumber
         } = req.body;
 
-        const existingUser = await User.findOne({ email });
+        const existingUser =
+            await User.findOne({ email });
 
         if (existingUser) {
             return res.status(400).json({
@@ -39,20 +40,15 @@ const register = async (req, res) => {
             });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword =
+            await bcrypt.hash(password, 10);
 
-        let firebaseUid = null;
-
-        if (admin.apps.length > 0) {
-            const firebaseUser =
-                await admin.auth().createUser({
-                    email,
-                    password,
-                    displayName: name
-                });
-
-            firebaseUid = firebaseUser.uid;
-        }
+        const firebaseUser =
+            await auth.createUser({
+                email,
+                password,
+                displayName: name
+            });
 
         const user = await User.create({
             name,
@@ -60,11 +56,15 @@ const register = async (req, res) => {
             password: hashedPassword,
             phone,
             role: role || "rider",
-            firebaseUid
+            firebaseUid: firebaseUser.uid
         });
 
         if (user.role === "driver") {
-            if (!vehicle || !vehicleNumber || !licenseNumber) {
+            if (
+                !vehicle ||
+                !vehicleNumber ||
+                !licenseNumber
+            ) {
                 await User.findByIdAndDelete(user._id);
 
                 return res.status(400).json({
@@ -94,6 +94,8 @@ const register = async (req, res) => {
             }
         });
     } catch (error) {
+        console.error(error);
+
         res.status(500).json({
             message: error.message
         });
@@ -107,7 +109,8 @@ const login = async (req, res) => {
             password
         } = req.body;
 
-        const user = await User.findOne({ email });
+        const user =
+            await User.findOne({ email });
 
         if (!user) {
             return res.status(401).json({
@@ -140,6 +143,8 @@ const login = async (req, res) => {
             }
         });
     } catch (error) {
+        console.error(error);
+
         res.status(500).json({
             message: error.message
         });

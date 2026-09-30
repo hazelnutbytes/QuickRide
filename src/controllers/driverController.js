@@ -1,5 +1,5 @@
 const Driver = require("../models/Driver");
-const { bucket } = require("../config/firebase");
+const { getGridFS } = require("../config/gridfs");
 
 const getDrivers = async (req, res) => {
     try {
@@ -63,52 +63,56 @@ const updateLocation = async (req, res) => {
 
 const uploadDocument = async (req, res) => {
     try {
-        if (!bucket) {
-            return res.status(500).json({
-                message: "Firebase Storage is not configured"
-            });
-        }
-
         if (!req.file) {
             return res.status(400).json({
                 message: "File is required"
             });
         }
 
+        const gridfsBucket = getGridFS();
+
         const fileName =
-            `driver-documents/${Date.now()}-${req.file.originalname}`;
+            `${Date.now()}-${req.file.originalname}`;
 
-        const file = bucket.file(fileName);
-
-        await file.save(req.file.buffer, {
-            metadata: {
-                contentType: req.file.mimetype
-            }
-        });
-
-        const driver =
-            await Driver.findOneAndUpdate(
+        const uploadStream =
+            gridfsBucket.openUploadStream(
+                fileName,
                 {
-                    user: req.user.id
-                },
-                {
-                    documents: fileName
-                },
-                {
-                    new: true
+                    contentType: req.file.mimetype
                 }
             );
 
-        if (!driver) {
-            return res.status(404).json({
-                message: "Driver profile not found"
-            });
-        }
+        uploadStream.end(req.file.buffer);
 
-        res.json({
-            message: "Document uploaded successfully",
-            driver
+        uploadStream.on("finish", async (file) => {
+            const driver =
+                await Driver.findOneAndUpdate(
+                    {
+                        user: req.user.id
+                    },
+                    {
+                        documents: {
+                            fileId: file._id,
+                            fileName: file.filename
+                        }
+                    },
+                    {
+                        new: true
+                    }
+                );
+
+            if (!driver) {
+                return res.status(404).json({
+                    message: "Driver profile not found"
+                });
+            }
+
+            res.json({
+                message: "Document uploaded successfully",
+                driver
+            });
         });
+
     } catch (error) {
         res.status(500).json({
             message: error.message

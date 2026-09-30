@@ -34,8 +34,14 @@ const driverSchema = new mongoose.Schema(
             default: true
         },
         documents: {
-            type: String,
-            default: null
+            fileId: {
+                type: mongoose.Schema.Types.ObjectId,
+                default: null
+            },
+            fileName: {
+                type: String,
+                default: null
+            }
         }
     },
     {

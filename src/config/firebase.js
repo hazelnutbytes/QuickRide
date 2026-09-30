@@ -1,33 +1,17 @@
-const admin = require("firebase-admin");
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
 
-let bucket = null;
+const serviceAccount = require("../../firebase-service-account.json");
 
-const firebaseConfigured =
-    process.env.FIREBASE_PROJECT_ID &&
-    process.env.FIREBASE_CLIENT_EMAIL &&
-    process.env.FIREBASE_PRIVATE_KEY &&
-    process.env.FIREBASE_STORAGE_BUCKET;
+const adminApp = initializeApp({
+    credential: cert(serviceAccount)
+});
 
-if (firebaseConfigured) {
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
-    };
+const auth = getAuth(adminApp);
 
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET
-    });
-
-    bucket = admin.storage().bucket();
-
-    console.log("Firebase connected");
-} else {
-    console.log("Firebase credentials not configured");
-}
+console.log("Firebase connected");
 
 module.exports = {
-    admin,
-    bucket
+    adminApp,
+    auth
 };
