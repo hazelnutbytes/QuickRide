@@ -84,32 +84,44 @@ const uploadDocument = async (req, res) => {
 
         uploadStream.end(req.file.buffer);
 
-        uploadStream.on("finish", async (file) => {
-            const driver =
-                await Driver.findOneAndUpdate(
-                    {
-                        user: req.user.id
-                    },
-                    {
-                        documents: {
-                            fileId: file._id,
-                            fileName: file.filename
+        uploadStream.on("finish", async () => {
+            try {
+                const driver =
+                    await Driver.findOneAndUpdate(
+                        {
+                            user: req.user.id
+                        },
+                        {
+                            documents: {
+                                fileId: uploadStream.id,
+                                fileName: fileName
+                            }
+                        },
+                        {
+                            new: true
                         }
-                    },
-                    {
-                        new: true
-                    }
-                );
+                    );
 
-            if (!driver) {
-                return res.status(404).json({
-                    message: "Driver profile not found"
+                if (!driver) {
+                    return res.status(404).json({
+                        message: "Driver profile not found"
+                    });
+                }
+
+                res.json({
+                    message: "Document uploaded successfully",
+                    driver
+                });
+            } catch (error) {
+                res.status(500).json({
+                    message: error.message
                 });
             }
+        });
 
-            res.json({
-                message: "Document uploaded successfully",
-                driver
+        uploadStream.on("error", (error) => {
+            res.status(500).json({
+                message: error.message
             });
         });
 
